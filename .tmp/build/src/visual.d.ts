@@ -1,0 +1,36 @@
+import powerbi from "powerbi-visuals-api";
+import "./../style/visual.less";
+import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
+import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
+import IVisual = powerbi.extensibility.visual.IVisual;
+export declare class Visual implements IVisual {
+    private svg;
+    private barContainer;
+    private host;
+    private xAxisContainer;
+    private yAxisContainer;
+    private dropdownContainer;
+    private dropdownContainerY;
+    private topNContainer;
+    private label;
+    private yLabel;
+    private x;
+    private y;
+    private height;
+    private width;
+    private tooltipServiceWrapper;
+    private legendContainer;
+    private marginTop;
+    private marginRight;
+    private marginBottom;
+    private marginLeft;
+    constructor(options: VisualConstructorOptions);
+    update(options: VisualUpdateOptions): void;
+    private initializeDropdownOptions;
+    private handleTopNSelection;
+    private initializeDimensions;
+    private renderChart;
+    private handleMouseOver;
+    private handleMouseOut;
+    private renderLegend;
+}
