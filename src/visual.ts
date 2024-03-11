@@ -40,7 +40,7 @@ export class Visual implements IVisual {
     private height: number;
     private width: number;
     private tooltipServiceWrapper: ITooltipServiceWrapper;
-
+    private showAverageLine: boolean = false;
     private legendContainer: Selection<SVGGElement, any, any, any>;
     private marginTop: number
     private marginRight: number
@@ -69,14 +69,22 @@ export class Visual implements IVisual {
         this.dropdownContainerY.style.marginRight = "10px";
 
         // average Line
+
+
         this.label = document.createElement('label');
         this.label.textContent = "Average Line";
         options.element.appendChild(this.label);
         this.averageLineContainer = document.createElement('select');
         options.element.appendChild(this.averageLineContainer);
         this.averageLineContainer.style.marginRight = "10px";
-
-
+        const averageLineOption = document.createElement("option");
+        averageLineOption.value = "true";
+        averageLineOption.text = "Hide";
+        this.averageLineContainer.appendChild(averageLineOption);
+        const noAverageLineOption = document.createElement("option");
+        noAverageLineOption.value = "false";
+        noAverageLineOption.text = "Show";
+        this.averageLineContainer.appendChild(noAverageLineOption);
 
 
         //  dropdown for Top N
@@ -311,17 +319,15 @@ export class Visual implements IVisual {
 
 
         this.svg.selectAll(".average-line").remove();
+        this.averageLineContainer.addEventListener('change', () => {
+            this.showAverageLine = this.averageLineContainer.value === "false";
+            this.toggleAverageLineVisibility(data);
+        });
 
-        const average = data.reduce((acc, cur) => acc + cur.value, 0) / data.length;
-        this.svg.append("line")
-            .classed("average-line", true)
-            .attr("x1", this.marginLeft)
-            .attr("y1", this.y(average))
-            .attr("x2", this.width - this.marginRight)
-            .attr("y2", this.y(average))
-            .attr("stroke", 'black')
-            .attr("stroke-width", 2)
-            .attr("stroke-line", "5,5");
+
+
+
+
 
 
         const barText = this.barContainer.selectAll(".bar-text").data(data);
@@ -429,8 +435,30 @@ export class Visual implements IVisual {
     }
 
 
+    private calculateAverage(data: any[]): number {
+        const sum = data.reduce((acc, cur) => acc + cur.value, 0);
+        return sum / data.length;
+    }
 
-
+    private toggleAverageLineVisibility(data: any[]) {
+        if (this.showAverageLine) {
+            // Show average line
+            const average = this.calculateAverage(data); // Calculate average based on your data
+            this.svg.selectAll(".average-line").remove(); // Remove existing average line
+            this.svg.append("line")
+                .classed("average-line", true)
+                .attr("x1", this.marginLeft)
+                .attr("y1", this.y(average))
+                .attr("x2", this.width - this.marginRight)
+                .attr("y2", this.y(average))
+                .attr("stroke", 'black')
+                .attr("stroke-width", 2)
+                .attr("stroke-line", "5,5");
+        } else {
+            // Hide average line
+            this.svg.selectAll(".average-line").remove();
+        }
+    }
 
 
 

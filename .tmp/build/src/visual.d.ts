@@ -20,6 +20,7 @@ export declare class Visual implements IVisual {
     private height;
     private width;
     private tooltipServiceWrapper;
+    private showAverageLine;
     private legendContainer;
     private marginTop;
     private marginRight;
@@ -34,4 +35,6 @@ export declare class Visual implements IVisual {
     private handleMouseOver;
     private handleMouseOut;
     private renderLegend;
+    private calculateAverage;
+    private toggleAverageLineVisibility;
 }

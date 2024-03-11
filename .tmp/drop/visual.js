@@ -32,6 +32,7 @@ class Visual {
     height;
     width;
     tooltipServiceWrapper;
+    showAverageLine = false;
     legendContainer;
     marginTop;
     marginRight;
@@ -63,6 +64,14 @@ class Visual {
         this.averageLineContainer = document.createElement('select');
         options.element.appendChild(this.averageLineContainer);
         this.averageLineContainer.style.marginRight = "10px";
+        const averageLineOption = document.createElement("option");
+        averageLineOption.value = "true";
+        averageLineOption.text = "Hide";
+        this.averageLineContainer.appendChild(averageLineOption);
+        const noAverageLineOption = document.createElement("option");
+        noAverageLineOption.value = "false";
+        noAverageLineOption.text = "Show";
+        this.averageLineContainer.appendChild(noAverageLineOption);
         //  dropdown for Top N
         this.label = document.createElement('label');
         this.label.textContent = "Top N : ";
@@ -222,16 +231,10 @@ class Visual {
             .attr("transform", `translate(${this.marginLeft},0)`);
         this.svg.attr("width", this.width).attr("height", this.height);
         this.svg.selectAll(".average-line").remove();
-        const average = data.reduce((acc, cur) => acc + cur.value, 0) / data.length;
-        this.svg.append("line")
-            .classed("average-line", true)
-            .attr("x1", this.marginLeft)
-            .attr("y1", this.y(average))
-            .attr("x2", this.width - this.marginRight)
-            .attr("y2", this.y(average))
-            .attr("stroke", 'black')
-            .attr("stroke-width", 2)
-            .attr("stroke-line", "5,5");
+        this.averageLineContainer.addEventListener('change', () => {
+            this.showAverageLine = this.averageLineContainer.value === "false";
+            this.toggleAverageLineVisibility(data);
+        });
         const barText = this.barContainer.selectAll(".bar-text").data(data);
         barText.enter()
             .append("text")
@@ -306,6 +309,30 @@ class Visual {
             .text(d => String(d));
         legend.exit().remove();
     };
+    calculateAverage(data) {
+        const sum = data.reduce((acc, cur) => acc + cur.value, 0);
+        return sum / data.length;
+    }
+    toggleAverageLineVisibility(data) {
+        if (this.showAverageLine) {
+            // Show average line
+            const average = this.calculateAverage(data); // Calculate average based on your data
+            this.svg.selectAll(".average-line").remove(); // Remove existing average line
+            this.svg.append("line")
+                .classed("average-line", true)
+                .attr("x1", this.marginLeft)
+                .attr("y1", this.y(average))
+                .attr("x2", this.width - this.marginRight)
+                .attr("y2", this.y(average))
+                .attr("stroke", 'black')
+                .attr("stroke-width", 2)
+                .attr("stroke-line", "5,5");
+        }
+        else {
+            // Hide average line
+            this.svg.selectAll(".average-line").remove();
+        }
+    }
 }
 
 
