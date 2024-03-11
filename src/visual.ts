@@ -31,6 +31,7 @@ export class Visual implements IVisual {
     private yAxisContainer: Selection<SVGGElement, any, any, any>;
     private dropdownContainer: HTMLSelectElement
     private dropdownContainerY: HTMLSelectElement
+    private averageLineContainer: HTMLSelectElement
     private topNContainer: HTMLSelectElement
     private label: HTMLLabelElement
     private yLabel: HTMLLabelElement
@@ -41,7 +42,6 @@ export class Visual implements IVisual {
     private tooltipServiceWrapper: ITooltipServiceWrapper;
 
     private legendContainer: Selection<SVGGElement, any, any, any>;
-
     private marginTop: number
     private marginRight: number
     private marginBottom: number
@@ -53,24 +53,34 @@ export class Visual implements IVisual {
         // Create tooltip service wrapper
         this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
 
-        // Append label for X-axis dropdown
+        //   X-axis dropdown
         this.label = document.createElement('label');
         this.label.textContent = "X : ";
         options.element.appendChild(this.label);
-
-        // Append dropdown for X-axis
         this.dropdownContainer = document.createElement('select');
         options.element.appendChild(this.dropdownContainer);
         this.dropdownContainer.style.marginRight = "10px";
-        // Append label for Y-axis dropdown
+        //  Y-axis dropdown
         this.label = document.createElement('label');
         this.label.textContent = "Y : ";
         options.element.appendChild(this.label);
-
-        // Append dropdown for Y-axis
         this.dropdownContainerY = document.createElement('select');
         options.element.appendChild(this.dropdownContainerY);
         this.dropdownContainerY.style.marginRight = "10px";
+
+        // average Line
+        this.label = document.createElement('label');
+        this.label.textContent = "Average Line";
+        options.element.appendChild(this.label);
+        this.averageLineContainer = document.createElement('select');
+        options.element.appendChild(this.averageLineContainer);
+        this.averageLineContainer.style.marginRight = "10px";
+
+
+
+
+        //  dropdown for Top N
+
         this.label = document.createElement('label');
         this.label.textContent = "Top N : ";
         options.element.appendChild(this.label);
@@ -173,6 +183,7 @@ export class Visual implements IVisual {
 
             this.renderChart(filteredData);
             this.renderLegend(filteredData);
+
         });
 
 
@@ -188,33 +199,30 @@ export class Visual implements IVisual {
             options.dataViews[0].categorical
         ) {
             const categoricalData = options.dataViews[0].categorical;
+            const categories = categoricalData.categories;
             const dataValues = categoricalData.values;
+
 
             for (const dataValue of dataValues) {
                 const option = document.createElement('option');
+
                 option.value = dataValue.source.displayName;
                 option.text = dataValue.source.displayName;
                 this.dropdownContainerY.appendChild(option);
-                const values = dataValue.values;
-                for (const value of values) {
 
+                for (let i = 0; i < dataValue.values.length; i++) {
                     extractedData.push({
-                        option: option.value.toLocaleLowerCase(),
-                        category: value,
-                        value: dataValue.values[values.indexOf(value)],
-                        color: this.host.colorPalette.getColor(value as string).value,
-
+                        option: option.value.toLowerCase(),
+                        category: categories[0].values[i],
+                        value: dataValue.values[i],
+                        color: this.host.colorPalette.getColor(categories[0].values[i] as string).value, // Get color from colorPalette
                     });
                 }
-
-
-
-
-
             }
-
-
         }
+
+
+
         this.dropdownContainerY.addEventListener('change', () => {
             const selectedYCategory: string = this.dropdownContainerY.value.toLowerCase();
 
@@ -232,7 +240,11 @@ export class Visual implements IVisual {
         this.initializeDropdownOptions();
         this.handleTopNSelection(extractedData);
 
+
+
     }
+
+
 
 
     private initializeDropdownOptions() {
@@ -240,7 +252,7 @@ export class Visual implements IVisual {
         this.topNContainer.innerHTML = '';
 
         // Add options to the top N dropdown
-        const topNOptions = [3, 5, 6];
+        const topNOptions = [3, 5];
         topNOptions.forEach(option => {
             const topNOption = document.createElement('option');
             topNOption.value = option.toString();
@@ -248,7 +260,7 @@ export class Visual implements IVisual {
             this.topNContainer.appendChild(topNOption);
         });
 
-        // Add other dropdown options if needed
+
     }
     private handleTopNSelection(extractedData: any[]) {
         // Handle changes in Top N dropdown
@@ -274,18 +286,17 @@ export class Visual implements IVisual {
 
 
     private renderChart(data: any[]) {
-
-        const x = scaleBand()
+        this.x = scaleBand()
             .domain(data.map(dataPoint => dataPoint.category))
             .rangeRound([this.marginLeft, this.width - this.marginRight])
             .padding(0.1);
 
-        const y = scaleLinear()
+        this.y = scaleLinear()
             .domain([0, max(data, dataPoint => dataPoint.value) + 2])
             .range([this.height - this.marginBottom, this.marginTop]);
 
-        const xAxis = axisBottom(x);
-        const yAxis = axisLeft(y);
+        const xAxis = axisBottom(this.x);
+        const yAxis = axisLeft(this.y);
 
         this.xAxisContainer
             .call(xAxis)
@@ -301,43 +312,60 @@ export class Visual implements IVisual {
 
         this.svg.selectAll(".average-line").remove();
 
-
         const average = data.reduce((acc, cur) => acc + cur.value, 0) / data.length;
         this.svg.append("line")
             .classed("average-line", true)
             .attr("x1", this.marginLeft)
-            .attr("y1", y(average))
+            .attr("y1", this.y(average))
             .attr("x2", this.width - this.marginRight)
-            .attr("y2", y(average))
+            .attr("y2", this.y(average))
             .attr("stroke", 'black')
             .attr("stroke-width", 2)
             .attr("stroke-line", "5,5");
 
 
+        const barText = this.barContainer.selectAll(".bar-text").data(data);
+        barText.enter()
+            .append("text")
+            .classed("bar-text", true)
+            .attr("x", dataPoint => this.x(dataPoint.category) + this.x.bandwidth() / 2) // Position text at the center of each bar
+            .attr("y", dataPoint => this.y(dataPoint.value) - 5)
+            .attr("text-anchor", "middle")
+            .text(dataPoint => dataPoint.value);
 
+        barText
+            .attr("x", dataPoint => this.x(dataPoint.category) + this.x.bandwidth() / 2)
+            .attr("y", dataPoint => this.y(dataPoint.value) - 5)
+            .text(dataPoint => dataPoint.value);
+
+        barText.exit().remove();
 
         const bars = this.barContainer.selectAll(".bar").data(data);
 
         bars.enter()
             .append("rect")
             .classed("bar", true)
-            .attr("width", x.bandwidth())
-            .attr("height", dataPoint => this.height - this.marginBottom - y(dataPoint.value))
-            .attr("x", dataPoint => x(dataPoint.category))
-            .attr("y", dataPoint => y(dataPoint.value))
+            .attr("width", this.x.bandwidth())
+            .attr("height", dataPoint => this.height - this.marginBottom - this.y(dataPoint.value))
+            .attr("x", dataPoint => this.x(dataPoint.category))
+            .attr("y", dataPoint => this.y(dataPoint.value))
             .attr("fill", dataPoint => this.host.colorPalette.getColor(dataPoint.category).value) // Use host color palette
             .on('mouseover', this.handleMouseOver)
             .on('mouseout', this.handleMouseOut);
 
         bars
-            .attr("width", x.bandwidth())
-            .attr("height", dataPoint => this.height - this.marginBottom - y(dataPoint.value))
-            .attr("x", dataPoint => x(dataPoint.category))
-            .attr("y", dataPoint => y(dataPoint.value))
+            .attr("width", this.x.bandwidth())
+            .attr("height", dataPoint => this.height - this.marginBottom - this.y(dataPoint.value))
+            .attr("x", dataPoint => this.x(dataPoint.category))
+            .attr("y", dataPoint => this.y(dataPoint.value))
             .attr("fill", dataPoint => this.host.colorPalette.getColor(dataPoint.category).value); // Use host color palette
 
         bars.exit().remove();
+
+
+
     }
+
 
 
 
@@ -399,6 +427,8 @@ export class Visual implements IVisual {
 
         legend.exit().remove();
     }
+
+
 
 
 

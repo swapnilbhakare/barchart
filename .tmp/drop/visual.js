@@ -23,6 +23,7 @@ class Visual {
     yAxisContainer;
     dropdownContainer;
     dropdownContainerY;
+    averageLineContainer;
     topNContainer;
     label;
     yLabel;
@@ -41,22 +42,28 @@ class Visual {
         this.host = options.host;
         // Create tooltip service wrapper
         this.tooltipServiceWrapper = (0,powerbi_visuals_utils_tooltiputils__WEBPACK_IMPORTED_MODULE_0__/* .createTooltipServiceWrapper */ .C)(this.host.tooltipService, options.element);
-        // Append label for X-axis dropdown
+        //   X-axis dropdown
         this.label = document.createElement('label');
         this.label.textContent = "X : ";
         options.element.appendChild(this.label);
-        // Append dropdown for X-axis
         this.dropdownContainer = document.createElement('select');
         options.element.appendChild(this.dropdownContainer);
         this.dropdownContainer.style.marginRight = "10px";
-        // Append label for Y-axis dropdown
+        //  Y-axis dropdown
         this.label = document.createElement('label');
         this.label.textContent = "Y : ";
         options.element.appendChild(this.label);
-        // Append dropdown for Y-axis
         this.dropdownContainerY = document.createElement('select');
         options.element.appendChild(this.dropdownContainerY);
         this.dropdownContainerY.style.marginRight = "10px";
+        // average Line
+        this.label = document.createElement('label');
+        this.label.textContent = "Average Line";
+        options.element.appendChild(this.label);
+        this.averageLineContainer = document.createElement('select');
+        options.element.appendChild(this.averageLineContainer);
+        this.averageLineContainer.style.marginRight = "10px";
+        //  dropdown for Top N
         this.label = document.createElement('label');
         this.label.textContent = "Top N : ";
         options.element.appendChild(this.label);
@@ -138,19 +145,19 @@ class Visual {
             options.dataViews[0] &&
             options.dataViews[0].categorical) {
             const categoricalData = options.dataViews[0].categorical;
+            const categories = categoricalData.categories;
             const dataValues = categoricalData.values;
             for (const dataValue of dataValues) {
                 const option = document.createElement('option');
                 option.value = dataValue.source.displayName;
                 option.text = dataValue.source.displayName;
                 this.dropdownContainerY.appendChild(option);
-                const values = dataValue.values;
-                for (const value of values) {
+                for (let i = 0; i < dataValue.values.length; i++) {
                     extractedData.push({
-                        option: option.value.toLocaleLowerCase(),
-                        category: value,
-                        value: dataValue.values[values.indexOf(value)],
-                        color: this.host.colorPalette.getColor(value).value,
+                        option: option.value.toLowerCase(),
+                        category: categories[0].values[i],
+                        value: dataValue.values[i],
+                        color: this.host.colorPalette.getColor(categories[0].values[i]).value, // Get color from colorPalette
                     });
                 }
             }
@@ -171,14 +178,13 @@ class Visual {
         // Clear existing options
         this.topNContainer.innerHTML = '';
         // Add options to the top N dropdown
-        const topNOptions = [3, 5, 6];
+        const topNOptions = [3, 5];
         topNOptions.forEach(option => {
             const topNOption = document.createElement('option');
             topNOption.value = option.toString();
             topNOption.textContent = `${option}`;
             this.topNContainer.appendChild(topNOption);
         });
-        // Add other dropdown options if needed
     }
     handleTopNSelection(extractedData) {
         // Handle changes in Top N dropdown
@@ -199,15 +205,15 @@ class Visual {
         this.marginLeft = 40;
     }
     renderChart(data) {
-        const x = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .scaleBand */ .WH)()
+        this.x = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .scaleBand */ .WH)()
             .domain(data.map(dataPoint => dataPoint.category))
             .rangeRound([this.marginLeft, this.width - this.marginRight])
             .padding(0.1);
-        const y = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .scaleLinear */ .m4Y)()
+        this.y = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .scaleLinear */ .m4Y)()
             .domain([0, (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .max */ .T9B)(data, dataPoint => dataPoint.value) + 2])
             .range([this.height - this.marginBottom, this.marginTop]);
-        const xAxis = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .axisBottom */ .l78)(x);
-        const yAxis = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .axisLeft */ .V4s)(y);
+        const xAxis = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .axisBottom */ .l78)(this.x);
+        const yAxis = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .axisLeft */ .V4s)(this.y);
         this.xAxisContainer
             .call(xAxis)
             .attr("transform", `translate(0,${this.height - this.marginBottom})`);
@@ -220,28 +226,41 @@ class Visual {
         this.svg.append("line")
             .classed("average-line", true)
             .attr("x1", this.marginLeft)
-            .attr("y1", y(average))
+            .attr("y1", this.y(average))
             .attr("x2", this.width - this.marginRight)
-            .attr("y2", y(average))
+            .attr("y2", this.y(average))
             .attr("stroke", 'black')
             .attr("stroke-width", 2)
             .attr("stroke-line", "5,5");
+        const barText = this.barContainer.selectAll(".bar-text").data(data);
+        barText.enter()
+            .append("text")
+            .classed("bar-text", true)
+            .attr("x", dataPoint => this.x(dataPoint.category) + this.x.bandwidth() / 2) // Position text at the center of each bar
+            .attr("y", dataPoint => this.y(dataPoint.value) - 5)
+            .attr("text-anchor", "middle")
+            .text(dataPoint => dataPoint.value);
+        barText
+            .attr("x", dataPoint => this.x(dataPoint.category) + this.x.bandwidth() / 2)
+            .attr("y", dataPoint => this.y(dataPoint.value) - 5)
+            .text(dataPoint => dataPoint.value);
+        barText.exit().remove();
         const bars = this.barContainer.selectAll(".bar").data(data);
         bars.enter()
             .append("rect")
             .classed("bar", true)
-            .attr("width", x.bandwidth())
-            .attr("height", dataPoint => this.height - this.marginBottom - y(dataPoint.value))
-            .attr("x", dataPoint => x(dataPoint.category))
-            .attr("y", dataPoint => y(dataPoint.value))
+            .attr("width", this.x.bandwidth())
+            .attr("height", dataPoint => this.height - this.marginBottom - this.y(dataPoint.value))
+            .attr("x", dataPoint => this.x(dataPoint.category))
+            .attr("y", dataPoint => this.y(dataPoint.value))
             .attr("fill", dataPoint => this.host.colorPalette.getColor(dataPoint.category).value) // Use host color palette
             .on('mouseover', this.handleMouseOver)
             .on('mouseout', this.handleMouseOut);
         bars
-            .attr("width", x.bandwidth())
-            .attr("height", dataPoint => this.height - this.marginBottom - y(dataPoint.value))
-            .attr("x", dataPoint => x(dataPoint.category))
-            .attr("y", dataPoint => y(dataPoint.value))
+            .attr("width", this.x.bandwidth())
+            .attr("height", dataPoint => this.height - this.marginBottom - this.y(dataPoint.value))
+            .attr("x", dataPoint => this.x(dataPoint.category))
+            .attr("y", dataPoint => this.y(dataPoint.value))
             .attr("fill", dataPoint => this.host.colorPalette.getColor(dataPoint.category).value); // Use host color palette
         bars.exit().remove();
     }

@@ -11,6 +11,7 @@ export declare class Visual implements IVisual {
     private yAxisContainer;
     private dropdownContainer;
     private dropdownContainerY;
+    private averageLineContainer;
     private topNContainer;
     private label;
     private yLabel;
