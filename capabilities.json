@@ -44,6 +44,18 @@
             }
         }
     ],
+    "objects": {
+        "general": {
+            "displayName": "General",
+            "properties": {
+                "filter": {
+                    "type": {
+                        "filter": true
+                    }
+                }
+            }
+        }
+    },
     "tooltips": {
         "supportedTypes": {
             "default": true,

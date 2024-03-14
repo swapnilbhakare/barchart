@@ -1,27 +1,42 @@
 var barchartE7100C746E6342918FB3D75F8761C9BB_DEBUG;
 /******/ (() => { // webpackBootstrap
-/******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 3820:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   b: () => (/* binding */ Visual)
 /* harmony export */ });
 /* harmony import */ var powerbi_visuals_utils_tooltiputils__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(6455);
-/* harmony import */ var d3__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(756);
+/* harmony import */ var lodash_debounce__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(8221);
+/* harmony import */ var lodash_debounce__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(lodash_debounce__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var d3__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(756);
 
 
 
 
+// import { Selector } from 'powerbi-visuals-api';
+
+// interface ISelectionManager {
+//     select(selectionId: ISelectionId | ISelectionId[], multiSelect?: boolean): IPromise<ISelectionId[]>;
+// }
+// export interface ISelectionId {
+//     equals(other: ISelectionId): boolean;
+//     includes(other: ISelectionId, ignoreHighlight?: boolean): boolean;
+//     getKey(): string;
+//     getSelector(): Selector;
+//     getSelectorsByColumn(): SelectorsByColumn;
+//     hasIdentity(): boolean;
+// }
 class Visual {
     svg;
     barContainer;
     host;
     xAxisContainer;
     yAxisContainer;
-    dropdownContainer;
+    dropdownContainerX;
     dropdownContainerY;
     averageLineContainer;
     topNContainer;
@@ -29,6 +44,8 @@ class Visual {
     yLabel;
     x;
     y;
+    selectionManager;
+    selectionIdBuilder;
     height;
     width;
     tooltipServiceWrapper;
@@ -39,17 +56,19 @@ class Visual {
     marginBottom;
     marginLeft;
     constructor(options) {
-        // x axis 
         this.host = options.host;
+        this.selectionManager = this.host.createSelectionManager();
+        this.selectionIdBuilder = this.host.createSelectionIdBuilder();
+        // Call methods to create selections as needed
         // Create tooltip service wrapper
         this.tooltipServiceWrapper = (0,powerbi_visuals_utils_tooltiputils__WEBPACK_IMPORTED_MODULE_0__/* .createTooltipServiceWrapper */ .C)(this.host.tooltipService, options.element);
         //   X-axis dropdown
         this.label = document.createElement('label');
         this.label.textContent = "X : ";
         options.element.appendChild(this.label);
-        this.dropdownContainer = document.createElement('select');
-        options.element.appendChild(this.dropdownContainer);
-        this.dropdownContainer.style.marginRight = "10px";
+        this.dropdownContainerX = document.createElement('select');
+        options.element.appendChild(this.dropdownContainerX);
+        this.dropdownContainerX.style.marginRight = "10px";
         //  Y-axis dropdown
         this.label = document.createElement('label');
         this.label.textContent = "Y : ";
@@ -82,7 +101,7 @@ class Visual {
         topNOption.value = "3";
         this.topNContainer.appendChild(topNOption);
         // Create SVG container
-        this.svg = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .select */ .Ltv)(options.element).append("svg");
+        this.svg = (0,d3__WEBPACK_IMPORTED_MODULE_2__/* .select */ .Ltv)(options.element).append("svg");
         // Append containers for chart elements
         this.barContainer = this.svg.append("g").classed("bar-container", true);
         this.xAxisContainer = this.svg.append("g").classed("x-axis", true);
@@ -95,93 +114,90 @@ class Visual {
     }
     update(options) {
         this.initializeDimensions(options.viewport);
-        const extractedData = [];
-        extractedData.length = 0;
-        this.initializeDimensions(options.viewport);
-        if (options.dataViews &&
-            options.dataViews[0] &&
-            options.dataViews[0].categorical) {
-            const categoricalData = options.dataViews[0].categorical;
-            const category = categoricalData.categories[0];
-            const dataValue = categoricalData.values[0];
-            for (const value of category.values) {
-                extractedData.push({
-                    category: value,
-                    value: dataValue.values[category.values.indexOf(value)],
-                    color: this.host.colorPalette.getColor(value).value,
-                });
-            }
-        }
-        this.renderLegend(extractedData);
-        this.renderChart(extractedData);
-        while (this.dropdownContainer.firstChild) {
-            this.dropdownContainer.removeChild(this.dropdownContainer.firstChild);
-        }
-        console.log(extractedData);
-        if (options.dataViews &&
-            options.dataViews[0] &&
-            options.dataViews[0].categorical) {
-            const categoricalData = options.dataViews[0].categorical;
-            const categories = categoricalData.categories;
-            const dataValue = categoricalData.values[0];
-            for (const category of categories) {
-                const values = category.values;
-                const option = document.createElement('option');
-                option.value = category.source.displayName;
-                option.text = category.source.displayName;
-                this.dropdownContainer.appendChild(option);
-                for (const value of values) {
-                    option.value.toLocaleLowerCase(),
-                        extractedData.push({
-                            option: option.value.toLocaleLowerCase(),
-                            category: value,
-                            value: dataValue.values[values.indexOf(value)],
-                            color: this.host.colorPalette.getColor(value).value,
-                        });
-                }
-            }
-        }
-        this.dropdownContainer.addEventListener('change', () => {
-            const selectedCategory = this.dropdownContainer.value.toLowerCase();
-            const filteredData = extractedData.filter(item => item.option === selectedCategory);
-            this.renderChart(filteredData);
-            this.renderLegend(filteredData);
-        });
-        while (this.dropdownContainerY.firstChild) {
-            this.dropdownContainerY.removeChild(this.dropdownContainerY.firstChild);
-        }
-        if (options.dataViews &&
-            options.dataViews[0] &&
-            options.dataViews[0].categorical) {
-            const categoricalData = options.dataViews[0].categorical;
-            const categories = categoricalData.categories;
-            const dataValues = categoricalData.values;
-            for (const dataValue of dataValues) {
-                const option = document.createElement('option');
-                option.value = dataValue.source.displayName;
-                option.text = dataValue.source.displayName;
-                this.dropdownContainerY.appendChild(option);
-                for (let i = 0; i < dataValue.values.length; i++) {
-                    extractedData.push({
-                        option: option.value.toLowerCase(),
-                        category: categories[0].values[i],
-                        value: dataValue.values[i],
-                        color: this.host.colorPalette.getColor(categories[0].values[i]).value, // Get color from colorPalette
-                    });
-                }
-            }
-        }
-        this.dropdownContainerY.addEventListener('change', () => {
-            const selectedYCategory = this.dropdownContainerY.value.toLowerCase();
-            const filteredData = extractedData.filter(item => item.option === selectedYCategory);
-            console.log(filteredData);
-            this.renderChart(filteredData);
-            this.renderLegend(filteredData);
-        });
+        const extractedData = this.populateData(options);
+        const xAxisData = this.extractXAxisData(extractedData);
+        const yAxisData = this.extractYAxisData(extractedData);
+        this.populateDropdown(this.dropdownContainerX, xAxisData);
+        this.populateDropdown(this.dropdownContainerY, yAxisData);
+        this.initializeDropdownOptions();
+        this.setupDropdownListeners(extractedData);
         this.handleMouseOver = this.handleMouseOver.bind(this);
         this.handleMouseOut = this.handleMouseOut.bind(this);
         this.initializeDropdownOptions();
         this.handleTopNSelection(extractedData);
+    }
+    setupDropdownListeners(extractedData) {
+        const renderChartWithData = () => {
+            const selectedXAxis = this.dropdownContainerX.value;
+            const selectedYAxis = this.dropdownContainerY.value;
+            // Handle default option for X-axis
+            let filteredDataX = extractedData;
+            if (selectedXAxis) {
+                filteredDataX = extractedData.filter(item => item.xAxis === selectedXAxis);
+            }
+            // Handle default option for Y-axis
+            let filteredDataY = extractedData;
+            if (selectedYAxis) {
+                filteredDataY = extractedData.filter(item => item.yAxis === selectedYAxis);
+            }
+            const combinedData = this.combineData(filteredDataX, filteredDataY);
+            this.renderChart(combinedData);
+        };
+        this.dropdownContainerX.addEventListener('change', renderChartWithData);
+        this.dropdownContainerY.addEventListener('change', renderChartWithData);
+        renderChartWithData();
+    }
+    populateData(options) {
+        const extractedData = [];
+        if (options.dataViews &&
+            options.dataViews[0] &&
+            options.dataViews[0].categorical) {
+            const categorical = options.dataViews[0].categorical;
+            const categoriesData = categorical.categories;
+            const dataValueData = categorical.values;
+            // Extract data for X-axis (categoriesData)
+            categoriesData.forEach((categoryData) => {
+                const category = categoryData.source.displayName;
+                const categories = categoryData.values;
+                categories.forEach((value) => {
+                    extractedData.push({
+                        xAxis: category,
+                        yAxis: null,
+                        value: value
+                    });
+                });
+            });
+            // Extract data for Y-axis (dataValueData)
+            dataValueData.forEach((data) => {
+                const option = data.source.displayName;
+                const values = data.values;
+                values.forEach((value) => {
+                    extractedData.push({
+                        xAxis: null,
+                        yAxis: option,
+                        value: value
+                    });
+                });
+            });
+        }
+        return extractedData;
+    }
+    extractXAxisData(data) {
+        return [...new Set(data.filter(item => item.xAxis).map(item => item.xAxis))];
+    }
+    extractYAxisData(data) {
+        return [...new Set(data.filter(item => item.yAxis).map(item => item.yAxis))];
+    }
+    populateDropdown(container, data) {
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
+        data.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            option.textContent = item;
+            container.appendChild(option);
+        });
     }
     initializeDropdownOptions() {
         // Clear existing options
@@ -196,13 +212,28 @@ class Visual {
         });
     }
     handleTopNSelection(extractedData) {
-        // Handle changes in Top N dropdown
         this.topNContainer.addEventListener('change', () => {
+            const selectedXAxis = this.dropdownContainerX.value;
+            const selectedYAxis = this.dropdownContainerY.value;
+            let filteredDataX;
+            if (selectedXAxis) {
+                filteredDataX = extractedData.filter(item => item.xAxis === selectedXAxis);
+            }
+            else {
+                filteredDataX = extractedData; // Include all data if no X-axis selection is made
+            }
+            let filteredDataY = [];
+            if (selectedYAxis) {
+                filteredDataY = extractedData.filter(item => item.yAxis === selectedYAxis);
+            }
             const topN = parseInt(this.topNContainer.value);
-            const sortedData = extractedData.sort((a, b) => b.value - a.value);
-            const topNData = sortedData.slice(0, topN);
-            this.renderChart(topNData);
-            this.renderLegend(topNData);
+            let topNData = [];
+            // Sort filtered data based on Y-axis values
+            const sortedData = filteredDataY.slice().sort((a, b) => b.value - a.value);
+            // Select the top N values
+            topNData = sortedData.slice(0, topN);
+            this.renderChart(topNData); // Render chart with top N Y-axis values and all X-axis values
+            this.renderLegend(filteredDataX); // Update legend with X-axis values
         });
     }
     initializeDimensions(viewport) {
@@ -213,16 +244,31 @@ class Visual {
         this.marginBottom = 40;
         this.marginLeft = 40;
     }
+    combineData(filteredDataX, filteredDataY) {
+        const combinedData = [];
+        const minLength = Math.min(filteredDataX.length, filteredDataY.length);
+        for (let i = 0; i < minLength; i++) {
+            combinedData.push({
+                category: filteredDataX[i].value,
+                xAxis: filteredDataX[i].xAxis,
+                yAxis: filteredDataY[i] ? filteredDataY[i].yAxis : null,
+                value: filteredDataY[i] ? filteredDataY[i].value : null // Add proper type annotation
+            });
+        }
+        return combinedData;
+    }
     renderChart(data) {
-        this.x = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .scaleBand */ .WH)()
-            .domain(data.map(dataPoint => dataPoint.category))
+        this.renderLegend(data);
+        this.initializeDropdownOptions();
+        this.x = (0,d3__WEBPACK_IMPORTED_MODULE_2__/* .scaleBand */ .WH)()
+            .domain(data.map((data) => data.category))
             .rangeRound([this.marginLeft, this.width - this.marginRight])
             .padding(0.1);
-        this.y = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .scaleLinear */ .m4Y)()
-            .domain([0, (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .max */ .T9B)(data, dataPoint => dataPoint.value) + 2])
+        this.y = (0,d3__WEBPACK_IMPORTED_MODULE_2__/* .scaleLinear */ .m4Y)()
+            .domain([0, (0,d3__WEBPACK_IMPORTED_MODULE_2__/* .max */ .T9B)(data, (dataPoint) => Number(dataPoint.value))])
             .range([this.height - this.marginBottom, this.marginTop]);
-        const xAxis = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .axisBottom */ .l78)(this.x);
-        const yAxis = (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .axisLeft */ .V4s)(this.y);
+        const xAxis = (0,d3__WEBPACK_IMPORTED_MODULE_2__/* .axisBottom */ .l78)(this.x);
+        const yAxis = (0,d3__WEBPACK_IMPORTED_MODULE_2__/* .axisLeft */ .V4s)(this.y);
         this.xAxisContainer
             .call(xAxis)
             .attr("transform", `translate(0,${this.height - this.marginBottom})`);
@@ -230,70 +276,94 @@ class Visual {
             .call(yAxis)
             .attr("transform", `translate(${this.marginLeft},0)`);
         this.svg.attr("width", this.width).attr("height", this.height);
+        const bars = this.barContainer.selectAll(".bar").data(data);
+        const barText = this.barContainer.selectAll(".bar-text").data(data);
+        barText.enter()
+            .append("text")
+            .classed("bar-text", true)
+            .attr("text-anchor", "middle")
+            .attr("x", (dataPoint) => this.x(dataPoint.category) + this.x.bandwidth() / 2)
+            .attr("y", (dataPoint) => this.y((dataPoint).value) - 5)
+            .text((dataPoint) => (dataPoint).value);
+        barText
+            .attr("x", (dataPoint) => this.x(dataPoint.category) + this.x.bandwidth() / 2) // Corrected typo here
+            .attr("y", (dataPoint) => this.y(dataPoint.value) - 5)
+            .text((dataPoint) => dataPoint.value);
+        barText.exit().remove();
+        bars.enter()
+            .append("rect")
+            .classed("bar", true)
+            .attr("width", this.x.bandwidth())
+            .attr("height", (dataPoint) => this.height - this.marginBottom - this.y(dataPoint.value))
+            .attr("x", (dataPoint) => this.x(dataPoint.category) + this.x.bandwidth() / 10)
+            .attr("y", (dataPoint) => this.y(dataPoint.value))
+            .attr("fill", (dataPoint) => this.host.colorPalette.getColor(dataPoint.category).value)
+            .on('mouseover', this.handleMouseOver)
+            .on('mouseout', this.handleMouseOut)
+            .attr("data-category", (dataPoint) => dataPoint.category)
+            .on("click", (dataPoint, mouseEvent) => {
+            const multiSelect = mouseEvent.ctrlKey;
+            this.selectionManager.select(dataPoint.category, multiSelect);
+            // this.selectionManager.select(ataPoindt.category);
+        });
+        bars
+            .attr("width", this.x.bandwidth())
+            .attr("height", (dataPoint) => this.height - this.marginBottom - this.y(dataPoint.value))
+            .attr("x", (dataPoint) => this.x(dataPoint.category) + this.x.bandwidth() / 10)
+            .attr("y", (dataPoint) => this.y(dataPoint.value))
+            .attr("fill", (dataPoint) => this.host.colorPalette.getColor(dataPoint.category).value);
+        bars.exit().remove();
         this.svg.selectAll(".average-line").remove();
         this.averageLineContainer.addEventListener('change', () => {
             this.showAverageLine = this.averageLineContainer.value === "false";
             this.toggleAverageLineVisibility(data);
         });
-        const barText = this.barContainer.selectAll(".bar-text").data(data);
-        barText.enter()
-            .append("text")
-            .classed("bar-text", true)
-            .attr("x", dataPoint => this.x(dataPoint.category) + this.x.bandwidth() / 2) // Position text at the center of each bar
-            .attr("y", dataPoint => this.y(dataPoint.value) - 5)
-            .attr("text-anchor", "middle")
-            .text(dataPoint => dataPoint.value);
-        barText
-            .attr("x", dataPoint => this.x(dataPoint.category) + this.x.bandwidth() / 2)
-            .attr("y", dataPoint => this.y(dataPoint.value) - 5)
-            .text(dataPoint => dataPoint.value);
-        barText.exit().remove();
-        const bars = this.barContainer.selectAll(".bar").data(data);
-        bars.enter()
-            .append("rect")
-            .classed("bar", true)
-            .attr("width", this.x.bandwidth())
-            .attr("height", dataPoint => this.height - this.marginBottom - this.y(dataPoint.value))
-            .attr("x", dataPoint => this.x(dataPoint.category))
-            .attr("y", dataPoint => this.y(dataPoint.value))
-            .attr("fill", dataPoint => this.host.colorPalette.getColor(dataPoint.category).value) // Use host color palette
-            .on('mouseover', this.handleMouseOver)
-            .on('mouseout', this.handleMouseOut);
-        bars
-            .attr("width", this.x.bandwidth())
-            .attr("height", dataPoint => this.height - this.marginBottom - this.y(dataPoint.value))
-            .attr("x", dataPoint => this.x(dataPoint.category))
-            .attr("y", dataPoint => this.y(dataPoint.value))
-            .attr("fill", dataPoint => this.host.colorPalette.getColor(dataPoint.category).value); // Use host color palette
-        bars.exit().remove();
     }
-    handleMouseOver = (event, dataPoint) => {
+    handleBarSelection(dataPoint) {
+        this.selectionManager.clear();
+        console.log('datapoint', dataPoint);
+        this.barContainer.selectAll(".bar")
+            .attr("fill", (d) => this.host.colorPalette.getColor(d.category).value)
+            .attr("opacity", 1);
+        const selectedBar = this.barContainer.select(`[data-category="${dataPoint.category}"]`);
+        selectedBar
+            .attr("fill", (d) => this.host.colorPalette.getColor(d.category).value)
+            .attr("opacity", 1);
+        this.barContainer.selectAll(".bar")
+            .filter((d) => d.category !== dataPoint.category)
+            .attr("fill", (d) => this.host.colorPalette.getColor(d.category).value)
+            .attr("opacity", 0.5);
+        // const selectionId = this.createSelectionId(dataPoint);
+        console.log("selectedIds", this.selectionManager.getSelectionIds());
+        console.log(this.selectionManager);
+        // this.selectionManager.select(selectionId, true);
+        // this.selectionManager.applySelectionFilter({ selectionId });
+    }
+    handleMouseOver = lodash_debounce__WEBPACK_IMPORTED_MODULE_1___default()((event, dataPoint) => {
         const targetElement = event.target;
-        console.log('mouse in');
-        this.tooltipServiceWrapper.addTooltip((0,d3__WEBPACK_IMPORTED_MODULE_1__/* .select */ .Ltv)(targetElement), (tooltipEvent) => {
+        this.tooltipServiceWrapper.addTooltip((0,d3__WEBPACK_IMPORTED_MODULE_2__/* .select */ .Ltv)(targetElement), (tooltipEvent) => {
             return [
                 {
                     displayName: dataPoint.category,
                     value: dataPoint.value.toString(),
                     color: this.host.colorPalette.getColor(dataPoint.category).value,
-                    header: dataPoint.option
                 }
             ];
         });
-    };
+    }, 300);
     handleMouseOut = (event) => {
         const targetElement = event.target;
-        (0,d3__WEBPACK_IMPORTED_MODULE_1__/* .select */ .Ltv)(targetElement).select('.tooltip').remove();
+        (0,d3__WEBPACK_IMPORTED_MODULE_2__/* .select */ .Ltv)(targetElement).select('.tooltip').remove();
     };
     renderLegend = (data) => {
-        const categories = [...new Set(data.map((d) => d.category))];
+        const legends = data.map((data) => data.category);
         const legendWidth = 900;
         const legendItemWidth = 100;
         const spacing = 50;
-        const legendHeight = categories.length * 50;
+        const legendHeight = legends.length * 50;
         this.legendContainer.selectAll(".legend-item").remove();
         const legend = this.legendContainer.selectAll(".legend-item")
-            .data(categories);
+            .data(legends);
         const legendEnter = legend.enter().append('g')
             .classed('legend-item', true)
             .attr("transform", (d, i) => `translate(${this.width - legendWidth + i * (legendItemWidth + spacing)}, 10)`); // Adjust the y-coordinate to position the legend at the top
@@ -316,8 +386,8 @@ class Visual {
     toggleAverageLineVisibility(data) {
         if (this.showAverageLine) {
             // Show average line
-            const average = this.calculateAverage(data); // Calculate average based on your data
-            this.svg.selectAll(".average-line").remove(); // Remove existing average line
+            const average = this.calculateAverage(data);
+            this.svg.selectAll(".average-line").remove();
             this.svg.append("line")
                 .classed("average-line", true)
                 .attr("x1", this.marginLeft)
@@ -338,9 +408,628 @@ class Visual {
 
 /***/ }),
 
+/***/ 1873:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var root = __webpack_require__(9325);
+
+/** Built-in value references. */
+var Symbol = root.Symbol;
+
+module.exports = Symbol;
+
+
+/***/ }),
+
+/***/ 2552:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var Symbol = __webpack_require__(1873),
+    getRawTag = __webpack_require__(659),
+    objectToString = __webpack_require__(9350);
+
+/** `Object#toString` result references. */
+var nullTag = '[object Null]',
+    undefinedTag = '[object Undefined]';
+
+/** Built-in value references. */
+var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * The base implementation of `getTag` without fallbacks for buggy environments.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the `toStringTag`.
+ */
+function baseGetTag(value) {
+  if (value == null) {
+    return value === undefined ? undefinedTag : nullTag;
+  }
+  return (symToStringTag && symToStringTag in Object(value))
+    ? getRawTag(value)
+    : objectToString(value);
+}
+
+module.exports = baseGetTag;
+
+
+/***/ }),
+
+/***/ 4128:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var trimmedEndIndex = __webpack_require__(1800);
+
+/** Used to match leading whitespace. */
+var reTrimStart = /^\s+/;
+
+/**
+ * The base implementation of `_.trim`.
+ *
+ * @private
+ * @param {string} string The string to trim.
+ * @returns {string} Returns the trimmed string.
+ */
+function baseTrim(string) {
+  return string
+    ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, '')
+    : string;
+}
+
+module.exports = baseTrim;
+
+
+/***/ }),
+
+/***/ 4840:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof __webpack_require__.g == 'object' && __webpack_require__.g && __webpack_require__.g.Object === Object && __webpack_require__.g;
+
+module.exports = freeGlobal;
+
+
+/***/ }),
+
+/***/ 659:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var Symbol = __webpack_require__(1873);
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/** Built-in value references. */
+var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the raw `toStringTag`.
+ */
+function getRawTag(value) {
+  var isOwn = hasOwnProperty.call(value, symToStringTag),
+      tag = value[symToStringTag];
+
+  try {
+    value[symToStringTag] = undefined;
+    var unmasked = true;
+  } catch (e) {}
+
+  var result = nativeObjectToString.call(value);
+  if (unmasked) {
+    if (isOwn) {
+      value[symToStringTag] = tag;
+    } else {
+      delete value[symToStringTag];
+    }
+  }
+  return result;
+}
+
+module.exports = getRawTag;
+
+
+/***/ }),
+
+/***/ 9350:
+/***/ ((module) => {
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/**
+ * Converts `value` to a string using `Object.prototype.toString`.
+ *
+ * @private
+ * @param {*} value The value to convert.
+ * @returns {string} Returns the converted string.
+ */
+function objectToString(value) {
+  return nativeObjectToString.call(value);
+}
+
+module.exports = objectToString;
+
+
+/***/ }),
+
+/***/ 9325:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var freeGlobal = __webpack_require__(4840);
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+module.exports = root;
+
+
+/***/ }),
+
+/***/ 1800:
+/***/ ((module) => {
+
+/** Used to match a single whitespace character. */
+var reWhitespace = /\s/;
+
+/**
+ * Used by `_.trim` and `_.trimEnd` to get the index of the last non-whitespace
+ * character of `string`.
+ *
+ * @private
+ * @param {string} string The string to inspect.
+ * @returns {number} Returns the index of the last non-whitespace character.
+ */
+function trimmedEndIndex(string) {
+  var index = string.length;
+
+  while (index-- && reWhitespace.test(string.charAt(index))) {}
+  return index;
+}
+
+module.exports = trimmedEndIndex;
+
+
+/***/ }),
+
+/***/ 8221:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var isObject = __webpack_require__(3805),
+    now = __webpack_require__(124),
+    toNumber = __webpack_require__(9374);
+
+/** Error message constants. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max,
+    nativeMin = Math.min;
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `wait`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounced function comes with a `cancel` method to cancel
+ * delayed `func` invocations and a `flush` method to immediately invoke them.
+ * Provide `options` to indicate whether `func` should be invoked on the
+ * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
+ * with the last arguments provided to the debounced function. Subsequent
+ * calls to the debounced function return the result of the last `func`
+ * invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is
+ * invoked on the trailing edge of the timeout only if the debounced function
+ * is invoked more than once during the `wait` timeout.
+ *
+ * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+ * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+ *
+ * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+ * for details over the differences between `_.debounce` and `_.throttle`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to debounce.
+ * @param {number} [wait=0] The number of milliseconds to delay.
+ * @param {Object} [options={}] The options object.
+ * @param {boolean} [options.leading=false]
+ *  Specify invoking on the leading edge of the timeout.
+ * @param {number} [options.maxWait]
+ *  The maximum time `func` is allowed to be delayed before it's invoked.
+ * @param {boolean} [options.trailing=true]
+ *  Specify invoking on the trailing edge of the timeout.
+ * @returns {Function} Returns the new debounced function.
+ * @example
+ *
+ * // Avoid costly calculations while the window size is in flux.
+ * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+ *
+ * // Invoke `sendMail` when clicked, debouncing subsequent calls.
+ * jQuery(element).on('click', _.debounce(sendMail, 300, {
+ *   'leading': true,
+ *   'trailing': false
+ * }));
+ *
+ * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
+ * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
+ * var source = new EventSource('/stream');
+ * jQuery(source).on('message', debounced);
+ *
+ * // Cancel the trailing debounced invocation.
+ * jQuery(window).on('popstate', debounced.cancel);
+ */
+function debounce(func, wait, options) {
+  var lastArgs,
+      lastThis,
+      maxWait,
+      result,
+      timerId,
+      lastCallTime,
+      lastInvokeTime = 0,
+      leading = false,
+      maxing = false,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = toNumber(wait) || 0;
+  if (isObject(options)) {
+    leading = !!options.leading;
+    maxing = 'maxWait' in options;
+    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+
+  function invokeFunc(time) {
+    var args = lastArgs,
+        thisArg = lastThis;
+
+    lastArgs = lastThis = undefined;
+    lastInvokeTime = time;
+    result = func.apply(thisArg, args);
+    return result;
+  }
+
+  function leadingEdge(time) {
+    // Reset any `maxWait` timer.
+    lastInvokeTime = time;
+    // Start the timer for the trailing edge.
+    timerId = setTimeout(timerExpired, wait);
+    // Invoke the leading edge.
+    return leading ? invokeFunc(time) : result;
+  }
+
+  function remainingWait(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime,
+        timeWaiting = wait - timeSinceLastCall;
+
+    return maxing
+      ? nativeMin(timeWaiting, maxWait - timeSinceLastInvoke)
+      : timeWaiting;
+  }
+
+  function shouldInvoke(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime;
+
+    // Either this is the first call, activity has stopped and we're at the
+    // trailing edge, the system time has gone backwards and we're treating
+    // it as the trailing edge, or we've hit the `maxWait` limit.
+    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
+      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+  }
+
+  function timerExpired() {
+    var time = now();
+    if (shouldInvoke(time)) {
+      return trailingEdge(time);
+    }
+    // Restart the timer.
+    timerId = setTimeout(timerExpired, remainingWait(time));
+  }
+
+  function trailingEdge(time) {
+    timerId = undefined;
+
+    // Only invoke if we have `lastArgs` which means `func` has been
+    // debounced at least once.
+    if (trailing && lastArgs) {
+      return invokeFunc(time);
+    }
+    lastArgs = lastThis = undefined;
+    return result;
+  }
+
+  function cancel() {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = lastCallTime = lastThis = timerId = undefined;
+  }
+
+  function flush() {
+    return timerId === undefined ? result : trailingEdge(now());
+  }
+
+  function debounced() {
+    var time = now(),
+        isInvoking = shouldInvoke(time);
+
+    lastArgs = arguments;
+    lastThis = this;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timerId === undefined) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxing) {
+        // Handle invocations in a tight loop.
+        clearTimeout(timerId);
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timerId === undefined) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return result;
+  }
+  debounced.cancel = cancel;
+  debounced.flush = flush;
+  return debounced;
+}
+
+module.exports = debounce;
+
+
+/***/ }),
+
+/***/ 3805:
+/***/ ((module) => {
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return value != null && (type == 'object' || type == 'function');
+}
+
+module.exports = isObject;
+
+
+/***/ }),
+
+/***/ 346:
+/***/ ((module) => {
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return value != null && typeof value == 'object';
+}
+
+module.exports = isObjectLike;
+
+
+/***/ }),
+
+/***/ 4394:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var baseGetTag = __webpack_require__(2552),
+    isObjectLike = __webpack_require__(346);
+
+/** `Object#toString` result references. */
+var symbolTag = '[object Symbol]';
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && baseGetTag(value) == symbolTag);
+}
+
+module.exports = isSymbol;
+
+
+/***/ }),
+
+/***/ 124:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var root = __webpack_require__(9325);
+
+/**
+ * Gets the timestamp of the number of milliseconds that have elapsed since
+ * the Unix epoch (1 January 1970 00:00:00 UTC).
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Date
+ * @returns {number} Returns the timestamp.
+ * @example
+ *
+ * _.defer(function(stamp) {
+ *   console.log(_.now() - stamp);
+ * }, _.now());
+ * // => Logs the number of milliseconds it took for the deferred invocation.
+ */
+var now = function() {
+  return root.Date.now();
+};
+
+module.exports = now;
+
+
+/***/ }),
+
+/***/ 9374:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+var baseTrim = __webpack_require__(4128),
+    isObject = __webpack_require__(3805),
+    isSymbol = __webpack_require__(4394);
+
+/** Used as references for various `Number` constants. */
+var NAN = 0 / 0;
+
+/** Used to detect bad signed hexadecimal string values. */
+var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+/** Used to detect binary string values. */
+var reIsBinary = /^0b[01]+$/i;
+
+/** Used to detect octal string values. */
+var reIsOctal = /^0o[0-7]+$/i;
+
+/** Built-in method references without a dependency on `root`. */
+var freeParseInt = parseInt;
+
+/**
+ * Converts `value` to a number.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to process.
+ * @returns {number} Returns the number.
+ * @example
+ *
+ * _.toNumber(3.2);
+ * // => 3.2
+ *
+ * _.toNumber(Number.MIN_VALUE);
+ * // => 5e-324
+ *
+ * _.toNumber(Infinity);
+ * // => Infinity
+ *
+ * _.toNumber('3.2');
+ * // => 3.2
+ */
+function toNumber(value) {
+  if (typeof value == 'number') {
+    return value;
+  }
+  if (isSymbol(value)) {
+    return NAN;
+  }
+  if (isObject(value)) {
+    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+    value = isObject(other) ? (other + '') : other;
+  }
+  if (typeof value != 'string') {
+    return value === 0 ? value : +value;
+  }
+  value = baseTrim(value);
+  var isBinary = reIsBinary.test(value);
+  return (isBinary || reIsOctal.test(value))
+    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+    : (reIsBadHex.test(value) ? NAN : +value);
+}
+
+module.exports = toNumber;
+
+
+/***/ }),
+
 /***/ 1191:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   G: () => (/* binding */ DefaultHandleTouchDelay)
 /* harmony export */ });
@@ -352,6 +1041,7 @@ const DefaultHandleTouchDelay = 500;
 /***/ 6455:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   C: () => (/* reexport safe */ _tooltipService__WEBPACK_IMPORTED_MODULE_0__.C)
 /* harmony export */ });
@@ -365,6 +1055,7 @@ const DefaultHandleTouchDelay = 500;
 /***/ 477:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   C: () => (/* binding */ createTooltipServiceWrapper)
 /* harmony export */ });
@@ -457,6 +1148,7 @@ class TooltipServiceWrapper {
 /***/ 327:
 /***/ ((module) => {
 
+"use strict";
 module.exports = Function('return this')();
 
 /***/ }),
@@ -464,6 +1156,7 @@ module.exports = Function('return this')();
 /***/ 2902:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ ascending)
 /* harmony export */ });
@@ -477,6 +1170,7 @@ function ascending(a, b) {
 /***/ 2016:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -500,6 +1194,7 @@ const bisectCenter = (0,_bisector_js__WEBPACK_IMPORTED_MODULE_0__/* ["default"] 
 /***/ 6037:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ bisector)
 /* harmony export */ });
@@ -568,6 +1263,7 @@ function zero() {
 /***/ 1180:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ descending)
 /* harmony export */ });
@@ -585,6 +1281,7 @@ function descending(a, b) {
 /***/ 1388:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   T9: () => (/* reexport safe */ _max_js__WEBPACK_IMPORTED_MODULE_0__.A)
 /* harmony export */ });
@@ -653,6 +1350,7 @@ function descending(a, b) {
 /***/ 846:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ max)
 /* harmony export */ });
@@ -683,6 +1381,7 @@ function max(values, valueof) {
 /***/ 3131:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ number)
 /* harmony export */ });
@@ -714,6 +1413,7 @@ function* numbers(values, valueof) {
 /***/ 6561:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ range)
 /* harmony export */ });
@@ -737,6 +1437,7 @@ function range(start, stop, step) {
 /***/ 6946:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (/* binding */ ticks),
 /* harmony export */   lq: () => (/* binding */ tickIncrement),
@@ -804,6 +1505,7 @@ function tickStep(start, stop, count) {
 /***/ 5267:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   V4: () => (/* binding */ axisLeft),
 /* harmony export */   l7: () => (/* binding */ axisBottom)
@@ -992,6 +1694,7 @@ function axisLeft(scale) {
 /***/ 2752:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -1005,6 +1708,7 @@ function axisLeft(scale) {
 /***/ 312:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   V4: () => (/* reexport safe */ _axis_js__WEBPACK_IMPORTED_MODULE_0__.V4),
 /* harmony export */   l7: () => (/* reexport safe */ _axis_js__WEBPACK_IMPORTED_MODULE_0__.l7)
@@ -1018,6 +1722,7 @@ function axisLeft(scale) {
 /***/ 8965:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* unused harmony exports brushSelection, brushX, brushY */
 /* harmony import */ var d3_transition__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(9902);
 
@@ -1648,6 +2353,7 @@ function brush(dim) {
 /***/ 3537:
 /***/ ((__unused_webpack___webpack_module__, __unused_webpack___webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony import */ var _brush_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(8965);
 
 
@@ -1657,6 +2363,7 @@ function brush(dim) {
 /***/ 6957:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (/* binding */ color),
 /* harmony export */   Qh: () => (/* binding */ rgb)
@@ -2066,6 +2773,7 @@ function hsl2rgb(h, m1, m2) {
 /***/ 871:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   X: () => (/* binding */ extend)
@@ -2087,6 +2795,7 @@ function extend(parent, definition) {
 /***/ 1089:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2181,6 +2890,7 @@ function set(type, name, callback) {
 /***/ 2101:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   wq: () => (/* binding */ cubicInOut)
 /* harmony export */ });
@@ -2203,6 +2913,7 @@ function cubicInOut(t) {
 /***/ 8701:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   GP: () => (/* binding */ format),
 /* harmony export */   s: () => (/* binding */ formatPrefix)
@@ -2234,6 +2945,7 @@ function defaultLocale(definition) {
 /***/ 7235:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2250,6 +2962,7 @@ function defaultLocale(definition) {
 /***/ 5204:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   f: () => (/* binding */ formatDecimalParts)
@@ -2281,6 +2994,7 @@ function formatDecimalParts(x, p) {
 /***/ 7168:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2309,6 +3023,7 @@ function formatDecimalParts(x, p) {
 /***/ 1728:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2326,6 +3041,7 @@ function formatDecimalParts(x, p) {
 /***/ 3520:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   u: () => (/* binding */ prefixExponent)
@@ -2354,6 +3070,7 @@ var prefixExponent;
 /***/ 3554:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2376,6 +3093,7 @@ var prefixExponent;
 /***/ 1631:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ formatSpecifier)
 /* harmony export */ });
@@ -2434,6 +3152,7 @@ FormatSpecifier.prototype.toString = function() {
 /***/ 6715:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2455,6 +3174,7 @@ FormatSpecifier.prototype.toString = function() {
 /***/ 1866:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2487,6 +3207,7 @@ FormatSpecifier.prototype.toString = function() {
 /***/ 9986:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2500,6 +3221,7 @@ FormatSpecifier.prototype.toString = function() {
 /***/ 6410:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2666,6 +3388,7 @@ var map = Array.prototype.map,
 /***/ 1734:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2682,6 +3405,7 @@ var map = Array.prototype.map,
 /***/ 7590:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2698,6 +3422,7 @@ var map = Array.prototype.map,
 /***/ 9460:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2715,6 +3440,7 @@ var map = Array.prototype.map,
 /***/ 8079:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   $: () => (/* binding */ genericArray)
 /* harmony export */ });
@@ -2748,6 +3474,7 @@ function genericArray(a, b) {
 /***/ 6160:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   H: () => (/* binding */ basis)
@@ -2778,6 +3505,7 @@ function basis(t1, v0, v1, v2, v3) {
 /***/ 9804:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2802,6 +3530,7 @@ function basis(t1, v0, v1, v2, v3) {
 /***/ 4709:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (/* binding */ nogamma),
 /* harmony export */   uN: () => (/* binding */ gamma)
@@ -2844,6 +3573,7 @@ function nogamma(a, b) {
 /***/ 3116:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2855,6 +3585,7 @@ function nogamma(a, b) {
 /***/ 8172:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2871,6 +3602,7 @@ function nogamma(a, b) {
 /***/ 8981:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2886,6 +3618,7 @@ function nogamma(a, b) {
 /***/ 128:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   p: () => (/* binding */ isNumberArray)
@@ -2911,6 +3644,7 @@ function isNumberArray(x) {
 /***/ 4287:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -2945,6 +3679,7 @@ function isNumberArray(x) {
 /***/ 1197:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -3015,6 +3750,7 @@ var rgbBasisClosed = rgbSpline(_basisClosed_js__WEBPACK_IMPORTED_MODULE_3__/* ["
 /***/ 9770:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -3030,6 +3766,7 @@ var rgbBasisClosed = rgbSpline(_basisClosed_js__WEBPACK_IMPORTED_MODULE_3__/* ["
 /***/ 7737:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -3105,6 +3842,7 @@ function one(b) {
 /***/ 1852:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   D: () => (/* binding */ identity)
@@ -3142,6 +3880,7 @@ var identity = {
 /***/ 1957:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   I: () => (/* binding */ interpolateTransformSvg),
 /* harmony export */   T: () => (/* binding */ interpolateTransformCss)
@@ -3218,6 +3957,7 @@ var interpolateTransformSvg = interpolateTransform(_parse_js__WEBPACK_IMPORTED_M
 /***/ 1226:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   P: () => (/* binding */ parseCss),
 /* harmony export */   i: () => (/* binding */ parseSvg)
@@ -3248,6 +3988,7 @@ function parseSvg(value) {
 /***/ 8503:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -3289,6 +4030,7 @@ function parseSvg(value) {
 /***/ 1392:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ band)
 /* harmony export */ });
@@ -3404,6 +4146,7 @@ function point() {
 /***/ 9279:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ constants)
 /* harmony export */ });
@@ -3419,6 +4162,7 @@ function constants(x) {
 /***/ 1052:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (/* binding */ continuous),
 /* harmony export */   C: () => (/* binding */ copy)
@@ -3562,6 +4306,7 @@ function continuous() {
 /***/ 1303:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   WH: () => (/* reexport safe */ _band_js__WEBPACK_IMPORTED_MODULE_0__.A),
 /* harmony export */   m4: () => (/* reexport safe */ _linear_js__WEBPACK_IMPORTED_MODULE_1__.A)
@@ -3608,6 +4353,7 @@ function continuous() {
 /***/ 9065:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   C: () => (/* binding */ initRange)
 /* harmony export */ });
@@ -3645,6 +4391,7 @@ function initInterpolator(domain, interpolator) {
 /***/ 6502:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ linear)
 /* harmony export */ });
@@ -3730,6 +4477,7 @@ function linear() {
 /***/ 414:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ number)
 /* harmony export */ });
@@ -3743,6 +4491,7 @@ function number(x) {
 /***/ 106:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ ordinal)
 /* harmony export */ });
@@ -3802,6 +4551,7 @@ function ordinal() {
 /***/ 8993:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ tickFormat)
 /* harmony export */ });
@@ -3847,6 +4597,7 @@ function tickFormat(start, stop, count, specifier) {
 /***/ 5478:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* binding */ array)
 /* harmony export */ });
@@ -3866,6 +4617,7 @@ function array(x) {
 /***/ 9731:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -3881,6 +4633,7 @@ function array(x) {
 /***/ 3663:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -3918,6 +4671,7 @@ function creatorFixed(fullname) {
 /***/ 7875:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Lt: () => (/* reexport safe */ _select_js__WEBPACK_IMPORTED_MODULE_0__.A)
 /* harmony export */ });
@@ -3944,6 +4698,7 @@ function creatorFixed(fullname) {
 /***/ 6541:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   j: () => (/* binding */ childMatcher)
@@ -3967,6 +4722,7 @@ function childMatcher(selector) {
 /***/ 7268:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -3985,6 +4741,7 @@ function childMatcher(selector) {
 /***/ 7947:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (__WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   g: () => (/* binding */ xhtml)
@@ -4005,6 +4762,7 @@ var xhtml = "http://www.w3.org/1999/xhtml";
 /***/ 183:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4023,6 +4781,7 @@ var xhtml = "http://www.w3.org/1999/xhtml";
 /***/ 4984:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4043,6 +4802,7 @@ var xhtml = "http://www.w3.org/1999/xhtml";
 /***/ 8072:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4062,6 +4822,7 @@ var xhtml = "http://www.w3.org/1999/xhtml";
 /***/ 7339:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4130,6 +4891,7 @@ function attrFunctionNS(fullname, value) {
 /***/ 5152:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4146,6 +4908,7 @@ function attrFunctionNS(fullname, value) {
 /***/ 8235:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4231,6 +4994,7 @@ function classedFunction(names, value) {
 /***/ 9063:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4254,6 +5018,7 @@ function selection_cloneDeep() {
 /***/ 8664:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4395,6 +5160,7 @@ function arraylike(data) {
 /***/ 9433:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4410,6 +5176,7 @@ function arraylike(data) {
 /***/ 202:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4455,6 +5222,7 @@ function dispatchFunction(type, params) {
 /***/ 2901:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4475,6 +5243,7 @@ function dispatchFunction(type, params) {
 /***/ 807:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4488,6 +5257,7 @@ function dispatchFunction(type, params) {
 /***/ 4916:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   L: () => (/* binding */ EnterNode)
@@ -4523,6 +5293,7 @@ EnterNode.prototype = {
 /***/ 2672:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4541,6 +5312,7 @@ EnterNode.prototype = {
 /***/ 9734:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4569,6 +5341,7 @@ EnterNode.prototype = {
 /***/ 697:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4604,6 +5377,7 @@ function htmlFunction(value) {
 /***/ 1882:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (__WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   LN: () => (/* binding */ Selection),
@@ -4740,6 +5514,7 @@ Selection.prototype = selection.prototype = {
 /***/ 1429:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4766,6 +5541,7 @@ function constantNull() {
 /***/ 1322:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4783,6 +5559,7 @@ function constantNull() {
 /***/ 5232:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4808,6 +5585,7 @@ function constantNull() {
 /***/ 9215:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4825,6 +5603,7 @@ function lower() {
 /***/ 7610:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4855,6 +5634,7 @@ function lower() {
 /***/ 4784:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4876,6 +5656,7 @@ function lower() {
 /***/ 3455:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4889,6 +5670,7 @@ function lower() {
 /***/ 5233:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4966,6 +5748,7 @@ function onAdd(typename, value, options) {
 /***/ 4510:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -4989,6 +5772,7 @@ function onAdd(typename, value, options) {
 /***/ 461:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5027,6 +5811,7 @@ function propertyFunction(name, value) {
 /***/ 2582:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5044,6 +5829,7 @@ function raise() {
 /***/ 3900:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5062,6 +5848,7 @@ function remove() {
 /***/ 7952:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5091,6 +5878,7 @@ function remove() {
 /***/ 9713:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5129,6 +5917,7 @@ function arrayAll(select) {
 /***/ 7408:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5158,6 +5947,7 @@ function childFirst() {
 /***/ 7867:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5187,6 +5977,7 @@ function childrenFilter(match) {
 /***/ 165:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5202,6 +5993,7 @@ function childrenFilter(match) {
 /***/ 2920:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5237,6 +6029,7 @@ function ascending(a, b) {
 /***/ 6732:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5250,6 +6043,7 @@ function ascending(a, b) {
 /***/ 3683:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   j: () => (/* binding */ styleValue)
@@ -5297,6 +6091,7 @@ function styleValue(node, name) {
 /***/ 7499:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5332,6 +6127,7 @@ function textFunction(value) {
 /***/ 574:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5349,6 +6145,7 @@ function none() {}
 /***/ 747:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5368,6 +6165,7 @@ function empty() {
 /***/ 6747:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5383,6 +6181,7 @@ function empty() {
 /***/ 1463:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5405,6 +6204,7 @@ function empty() {
 /***/ 29:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   M4: () => (/* binding */ Timer),
 /* harmony export */   O1: () => (/* binding */ timer),
@@ -5529,6 +6329,7 @@ function sleep(time) {
 /***/ 9902:
 /***/ ((__unused_webpack___webpack_module__, __unused_webpack___webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony import */ var _selection_index_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(7111);
 
 
@@ -5541,6 +6342,7 @@ function sleep(time) {
 /***/ 7045:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5576,6 +6378,7 @@ function sleep(time) {
 /***/ 7111:
 /***/ ((__unused_webpack___webpack_module__, __unused_webpack___webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony import */ var d3_selection__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1882);
 /* harmony import */ var _interrupt_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(5868);
 /* harmony import */ var _transition_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(4620);
@@ -5592,6 +6395,7 @@ d3_selection__WEBPACK_IMPORTED_MODULE_0__/* ["default"] */ .Ay.prototype.transit
 /***/ 5868:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5610,6 +6414,7 @@ d3_selection__WEBPACK_IMPORTED_MODULE_0__/* ["default"] */ .Ay.prototype.transit
 /***/ 4620:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5666,6 +6471,7 @@ function inherit(node, id) {
 /***/ 7949:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5758,6 +6564,7 @@ function attrFunctionNS(fullname, interpolate, value) {
 /***/ 3446:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5813,6 +6620,7 @@ function attrTween(name, value) {
 /***/ 1375:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5847,6 +6655,7 @@ function delayConstant(id, value) {
 /***/ 6558:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5881,6 +6690,7 @@ function durationConstant(id, value) {
 /***/ 4228:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5908,6 +6718,7 @@ function easeConstant(id, value) {
 /***/ 6066:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5933,6 +6744,7 @@ function easeVarying(id, value) {
 /***/ 3589:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -5973,6 +6785,7 @@ function easeVarying(id, value) {
 /***/ 4876:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6001,6 +6814,7 @@ function easeVarying(id, value) {
 /***/ 9064:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Si: () => (/* binding */ newId),
 /* harmony export */   eB: () => (/* binding */ Transition)
@@ -6107,6 +6921,7 @@ Transition.prototype = transition.prototype = {
 /***/ 7479:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6131,6 +6946,7 @@ Transition.prototype = transition.prototype = {
 /***/ 5636:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6161,6 +6977,7 @@ Transition.prototype = transition.prototype = {
 /***/ 5207:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6204,6 +7021,7 @@ function onFunction(id, name, listener) {
 /***/ 5182:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6225,6 +7043,7 @@ function removeFunction(id) {
 /***/ 3363:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ay: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   Jt: () => (/* binding */ get),
@@ -6398,6 +7217,7 @@ function create(node, id, self) {
 /***/ 3206:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6433,6 +7253,7 @@ function create(node, id, self) {
 /***/ 1683:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6472,6 +7293,7 @@ function create(node, id, self) {
 /***/ 7270:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6490,6 +7312,7 @@ var Selection = d3_selection__WEBPACK_IMPORTED_MODULE_0__/* ["default"] */ .Ay.p
 /***/ 9353:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6585,6 +7408,7 @@ function styleMaybeRemove(id, name) {
 /***/ 8674:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6619,6 +7443,7 @@ function styleTween(name, value, priority) {
 /***/ 137:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6650,6 +7475,7 @@ function textFunction(value) {
 /***/ 7890:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6684,6 +7510,7 @@ function textTween(value) {
 /***/ 5509:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
@@ -6720,6 +7547,7 @@ function textTween(value) {
 /***/ 123:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   A: () => (/* export default binding */ __WEBPACK_DEFAULT_EXPORT__),
 /* harmony export */   J: () => (/* binding */ tweenValue)
@@ -6813,6 +7641,7 @@ function tweenValue(transition, name, value) {
 /***/ 6470:
 /***/ ((__unused_webpack___webpack_module__, __unused_webpack___webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony import */ var _zoom_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1943);
 /* harmony import */ var _transform_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(3578);
 
@@ -6824,6 +7653,7 @@ function tweenValue(transition, name, value) {
 /***/ 3578:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* unused harmony exports Transform, identity, default */
 function Transform(k, x, y) {
   this.k = k;
@@ -6883,6 +7713,7 @@ function transform(node) {
 /***/ 1943:
 /***/ ((__unused_webpack___webpack_module__, __unused_webpack___webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony import */ var d3_transition__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(9902);
 /* harmony import */ var _transform_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(3578);
 
@@ -7339,6 +8170,7 @@ function defaultConstrain(transform, extent, translateExtent) {
 /***/ 756:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Ltv: () => (/* reexport safe */ d3_selection__WEBPACK_IMPORTED_MODULE_4__.Lt),
 /* harmony export */   T9B: () => (/* reexport safe */ d3_array__WEBPACK_IMPORTED_MODULE_0__.T9),
@@ -7391,6 +8223,7 @@ function defaultConstrain(transform, extent, translateExtent) {
 /***/ 4119:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
+"use strict";
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   B: () => (/* binding */ InternMap)
 /* harmony export */ });
@@ -7487,6 +8320,18 @@ function keyof(value) {
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/compat get default export */
+/******/ 	(() => {
+/******/ 		// getDefaultExport function for compatibility with non-harmony modules
+/******/ 		__webpack_require__.n = (module) => {
+/******/ 			var getter = module && module.__esModule ?
+/******/ 				() => (module['default']) :
+/******/ 				() => (module);
+/******/ 			__webpack_require__.d(getter, { a: getter });
+/******/ 			return getter;
+/******/ 		};
+/******/ 	})();
+/******/ 	
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	(() => {
 /******/ 		// define getter functions for harmony exports
@@ -7497,6 +8342,18 @@ function keyof(value) {
 /******/ 				}
 /******/ 			}
 /******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/global */
+/******/ 	(() => {
+/******/ 		__webpack_require__.g = (function() {
+/******/ 			if (typeof globalThis === 'object') return globalThis;
+/******/ 			try {
+/******/ 				return this || new Function('return this')();
+/******/ 			} catch (e) {
+/******/ 				if (typeof window === 'object') return window;
+/******/ 			}
+/******/ 		})();
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
@@ -7517,8 +8374,9 @@ function keyof(value) {
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+// This entry need to be wrapped in an IIFE because it need to be in strict mode.
 (() => {
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)

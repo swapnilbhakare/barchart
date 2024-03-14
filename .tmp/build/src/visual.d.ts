@@ -9,7 +9,7 @@ export declare class Visual implements IVisual {
     private host;
     private xAxisContainer;
     private yAxisContainer;
-    private dropdownContainer;
+    private dropdownContainerX;
     private dropdownContainerY;
     private averageLineContainer;
     private topNContainer;
@@ -17,6 +17,8 @@ export declare class Visual implements IVisual {
     private yLabel;
     private x;
     private y;
+    private selectionManager;
+    private selectionIdBuilder;
     private height;
     private width;
     private tooltipServiceWrapper;
@@ -28,10 +30,17 @@ export declare class Visual implements IVisual {
     private marginLeft;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
+    private setupDropdownListeners;
+    private populateData;
+    private extractXAxisData;
+    private extractYAxisData;
+    private populateDropdown;
     private initializeDropdownOptions;
     private handleTopNSelection;
     private initializeDimensions;
+    private combineData;
     private renderChart;
+    private handleBarSelection;
     private handleMouseOver;
     private handleMouseOut;
     private renderLegend;
